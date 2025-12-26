@@ -69,14 +69,14 @@ Production domain: **https://kremna-production.up.railway.app**
 Deploy sonrası (ve her yeniden başlatma sonrası) agent konfigürasyonunu kaydetmek için:
 ```bash
 curl -X POST https://kremna-production.up.railway.app/agent_config \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json; charset=utf-8" \
   -d '{
     "agentId": "agent_8823_xyz",
     "persona_title": "Premium Müşteri Temsilcisi",
     "model_instructions": {
-      "tone": "Resmi, Saygılı",
-      "rules": ["Kısa cevaplar", "Değer odaklı"],
-      "prohibited_topics": ["Rakip fiyatları"]
+      "tone": "Resmi, Saygılı, Çözüm Odaklı",
+      "rules": ["Kısa cevaplar ver", "Değer odaklı yaklaş", "Türkçe cevap ver"],
+      "prohibited_topics": ["Rakip ürünleri", "Fiyat sızıntıları"]
     },
     "initial_context": {
       "company_slogan": "Kalite Asla Tesadüf Değildir",
@@ -105,11 +105,11 @@ $config = @{
     persona_title = "Premium Müşteri Temsilcisi"
     model_instructions = @{
       tone = "Resmi, Saygılı, Çözüm Odaklı"
-      rules = @("Kısa cevaplar", "Değer odaklı")
-      prohibited_topics = @("Rakip fiyatları")
+      rules = @("Kısa cevaplar ver", "Değer odaklı yaklaş", "Türkçe cevap ver")
+      prohibited_topics = @("Rakip ürünleri", "Fiyat sızıntıları")
     }
     initial_context = @{
-      company_slogan = "Kalite Asla Tesadüf Değildir",
+      company_slogan = "Kalite Asla Tesadüf Değildir"
       pricing_rationale = "Fiyatlandırma; kullanım hacmi (token), aktif kullanıcı sayısı ve ek özelliklere göre kademeli olarak belirlenir."
     }
 } | ConvertTo-Json -Depth 10
@@ -191,28 +191,72 @@ Agent bulunamadı: agent_8823_xyz
 
 Aşağıdaki komutlar production domain üzerinde test içindir.
 
-1) Agent konfigürasyonu kaydet (repo içindeki örnek dosya):
+### 1) Agent konfigürasyonu kaydet
+
+**cURL (Linux/Mac/Windows PowerShell):**
 ```bash
 curl -X POST https://kremna-production.up.railway.app/agent_config \
-  -H "Content-Type: application/json" \
-  -d @agent_8823_config.json
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "agentId": "agent_8823_xyz",
+    "persona_title": "Premium Müşteri Temsilcisi",
+    "model_instructions": {
+      "tone": "Resmi, Saygılı, Çözüm Odaklı",
+      "rules": ["Kısa cevaplar ver", "Değer odaklı yaklaş", "Türkçe cevap ver"],
+      "prohibited_topics": ["Rakip ürünleri", "Fiyat sızıntıları"]
+    },
+    "initial_context": {
+      "company_slogan": "Kalite Asla Tesadüf Değildir",
+      "pricing_rationale": "Fiyatlandırma; kullanım hacmi (token), aktif kullanıcı sayısı ve ek özelliklere göre kademeli olarak belirlenir."
+    }
+  }'
 ```
 
-2) Sohbet isteği gönder (örnek):
+**PowerShell:**
+```powershell
+$config = @{
+    agentId = "agent_8823_xyz"
+    persona_title = "Premium Müşteri Temsilcisi"
+    model_instructions = @{
+      tone = "Resmi, Saygılı, Çözüm Odaklı"
+      rules = @("Kısa cevaplar ver", "Değer odaklı yaklaş", "Türkçe cevap ver")
+      prohibited_topics = @("Rakip ürünleri", "Fiyat sızıntıları")
+    }
+    initial_context = @{
+      company_slogan = "Kalite Asla Tesadüf Değildir"
+      pricing_rationale = "Fiyatlandırma; kullanım hacmi (token), aktif kullanıcı sayısı ve ek özelliklere göre kademeli olarak belirlenir."
+    }
+} | ConvertTo-Json -Depth 10
+
+Invoke-RestMethod -Method Post -Uri "https://kremna-production.up.railway.app/agent_config" `
+  -ContentType 'application/json; charset=utf-8' -Body $config
+```
+
+### 2) Sohbet isteği gönder (örnek):
 ```bash
 curl -X POST https://kremna-production.up.railway.app/chat \
   -H "Content-Type: application/json; charset=utf-8" \
-  -d @test_chat_request.json
+  -d '{
+    "agent_id": "agent_8823_xyz",
+    "session_id": "sess_user_999",
+    "user_message": "Merhaba, fiyat hakkında bilgi alabilir miyim?",
+    "chat_history": []
+  }'
 ```
 
-3) Eski formatla persona ekleme (opsiyonel/geriye dönük):
+### 3) Eski formatla persona ekleme (opsiyonel/geriye dönük):
 ```bash
 curl -X POST https://kremna-production.up.railway.app/persona \
   -H "Content-Type: application/json" \
-  -d '{"name":"Yardımcı Asistan","tone":"Arkadaş canlısı","constraints":"Kısa cevaplar ver"}'
+  -d '{
+    "name":"Yardımcı Asistan",
+    "tone":"Arkadaş canlısı",
+    "constraints":"Kısa cevaplar ver"
+  }'
 ```
 
-Notlar:
+### 📝 Notlar:
 - `GEMINI_API_KEY` Railway Variables altında tanımlı olmalıdır; aksi halde `/chat` çağrıları hata döner.
 - `/` endpointi HTML döner; API için `POST /agent_config` ve `POST /chat` kullanılmalıdır.
 - Production ortamı: Europe-West4, 1 replica.
+- Model schema'sı Pydantic ile tanımlanmıştır; Swagger UI: `/docs` (opsiyonel, açılmamış)
