@@ -401,8 +401,18 @@ async def chat_with_agent(request: Request):
         """, (agent_id,))
         row = c.fetchone()
 
-        # #####M Eğer agent_configurations'da yoksa, yalnızca legacy sayısal persona_id için personas tablosuna bak
+        # #####M Eğer bulunamazsa: 1) demo-agent'a düş 2) legacy sayısal persona_id dene 3) 404
         if not row:
+            # 1) demo-agent fallback
+            c.execute(f"""
+                SELECT agent_id, persona_title, tone, rules, prohibited_topics, initial_context
+                FROM agent_configurations
+                WHERE agent_id = {ph()}
+            """, ("demo-agent",))
+            row = c.fetchone()
+
+        if not row:
+            # 2) legacy numeric persona_id fallback
             legacy_persona_id = None
             try:
                 legacy_persona_id = int(agent_id)
@@ -428,19 +438,19 @@ async def chat_with_agent(request: Request):
                 return JSONResponse(
                     content={
                         "status": "error",
-                        "detail": "Agent bulunamadı. Önce /agent_config ile kaydedin veya legacy numeric persona_id kullanın."
+                        "detail": "Agent bulunamadı. Önce /agent_config ile kaydedin veya demo-agent/legacy persona_id kullanın."
                     },
                     status_code=404,
                     media_type="application/json; charset=utf-8"
                 )
-        else:
+        if row:
             agent_config = {
                 "agent_id": row[0],
                 "persona_title": row[1],
-                "tone": row[2],
-                "rules": row[3],
-                "prohibited_topics": row[4],
-                "initial_context": row[5]
+                "tone": row[2] or "",
+                "rules": row[3] or "",
+                "prohibited_topics": row[4] or "",
+                "initial_context": row[5] or ""
             }
 
         conn.close()
